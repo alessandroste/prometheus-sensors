@@ -1,0 +1,14 @@
+{
+  "domain": "prometheus_sensors",
+  "name": "Prometheus Sensors",
+  "codeowners": [
+    "@alessandroste"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/alessandroste/prometheus-sensors",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/alessandroste/prometheus-sensors/issues",
+  "version": "0.1.0",
+  "requirements": []
+}

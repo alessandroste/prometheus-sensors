@@ -1,0 +1,36 @@
+services:
+  homeassistant:
+    image: mcr.microsoft.com/devcontainers/python:3
+    container_name: homeassistant
+    ports:
+      - 8123:8123
+    volumes:
+      - ..:/workspace:cached
+    restart: unless-stopped
+    command: sleep infinity
+  prometheus:
+    image: quay.io/prometheus/prometheus
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - prom_data:/prometheus
+  prometheus-node-exporter:
+    image: quay.io/prometheus/node-exporter
+    container_name: prometheus-node-exporter
+    command:
+      - '--path.rootfs=/host'
+    # network_mode: host
+    ports:
+      - 9100:9100
+    # pid: host
+    restart: unless-stopped
+    # volumes:
+    #   - '/:/host:ro,rslave'
+
+volumes:
+  prom_data:

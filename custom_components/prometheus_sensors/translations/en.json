@@ -1,0 +1,104 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "If you need help with the configuration have a look here: https://github.com/alessandroste/prometheus-sensors",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "verify_ssl": "Verify SSL",
+          "scan_interval": "Refresh interval"
+        },
+        "data_description": {
+          "name": "Name to assign to the server.",
+          "host": "The host of your Prometheus server.",
+          "verify_ssl": "Verify SSL certificate.",
+          "scan_interval": "Refresh interval"
+        }
+      },
+      "reconfigure": {
+        "description": "If you need help with the configuration have a look here: https://github.com/alessandroste/prometheus-sensors",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "verify_ssl": "Verify SSL",
+          "scan_interval": "Refresh interval"
+        },
+        "data_description": {
+          "name": "Name to assign to the server.",
+          "host": "The host of your Prometheus server.",
+          "verify_ssl": "Verify SSL certificate.",
+          "scan_interval": "Refresh interval"
+        }
+      }
+    },
+    "error": {
+      "auth": "Authentication failed.",
+      "connection": "Unable to connect to the server.",
+      "unknown": "Unknown error occurred."
+    },
+    "abort": {
+      "already_configured": "This entry is already configured.",
+      "reconfigure_successful": "Reconfiguration succeeded."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Manage your Prometheus Sensors options.",
+        "menu_options": {
+          "none": "Nothing to do yet"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "entity": {
+      "step": {
+        "add_query": {
+          "description": "Add a new Prometheus query as sensor. Check the [documentation](https://developers.home-assistant.io/docs/core/entity/sensor/) for more information.",
+          "data": {
+            "name": "Name",
+            "query": "Query",
+            "icon": "Icon",
+            "state_class": "State Class",
+            "device_class": "Device Class",
+            "unit_of_measurement": "Unit of Measurement"
+          },
+          "data_description": {
+            "name": "The name of the sensor.",
+            "query": "The PromQL query to execute.",
+            "state_class": "The state class of the sensor.",
+            "device_class": "The device class of the sensor.",
+            "unit_of_measurement": "The unit of measurement for the sensor."
+          }
+        },
+        "reconfigure_sensor": {
+          "description": "Add a new Prometheus query",
+          "data": {
+            "name": "Name",
+            "query": "Query",
+            "icon": "Icon",
+            "state_class": "State Class",
+            "device_class": "Device Class",
+            "unit_of_measurement": "Unit of Measurement"
+          },
+          "data_description": {
+            "name": "The name of the sensor.",
+            "query": "The PromQL query to execute.",
+            "state_class": "The state class of the sensor.",
+            "device_class": "The device class of the sensor.",
+            "unit_of_measurement": "The unit of measurement for the sensor."
+          }
+        }
+      },
+      "error": {
+        "invalid_query": "PromQL query needs to return a single value."
+      },
+      "abort": {
+        "server_not_configured": "Prometheus server is not configured.",
+        "reconfigure_successful": "Reconfiguration succeeded."
+      }
+    }
+  }
+}

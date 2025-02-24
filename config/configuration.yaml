@@ -1,0 +1,31 @@
+# https://www.home-assistant.io/integrations/default_config/
+# default_config:
+# assist_pipeline:
+# bluetooth:
+# cloud:
+# conversation:
+# dhcp:
+# energy:
+# go2rtc:
+history:
+# homeassistant_alerts:
+logbook:
+# media_source:
+# mobile_app:
+my:
+ssdp:
+stream:
+sun:
+# usb:
+# webhook:
+# zeroconf:
+
+# https://www.home-assistant.io/integrations/homeassistant/
+homeassistant:
+  debug: true
+
+# https://www.home-assistant.io/integrations/logger/
+logger:
+  default: info
+  logs:
+    custom_components.prometheus_sensors: debug
