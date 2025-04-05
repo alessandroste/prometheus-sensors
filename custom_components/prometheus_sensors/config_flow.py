@@ -271,7 +271,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         """Reconfigure a sensor."""
         _errors = {}
         reconfigure_data = self._get_reconfigure_subentry()
-        server_config = self._get_reconfigure_entry()
+        server_config = self._get_entry()
         if user_input is not None:
             valid = await _client_call_wrapper(
                 lambda: self._async_test_query(
@@ -293,7 +293,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                     state_class=user_input[CONF_STATE_CLASS],
                 )
                 return self.async_update_and_abort(
-                    self._get_reconfigure_entry(),
+                    self._get_entry(),
                     self._get_reconfigure_subentry(),
                     data=asdict(query),
                     title=user_input[CONF_NAME],
