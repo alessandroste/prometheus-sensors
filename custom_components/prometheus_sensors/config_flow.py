@@ -221,11 +221,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Add a new sensor."""
-        server_config: ConfigEntry | None = self.hass.config_entries.async_get_entry(
-            self.handler[0]
-        )
-        if server_config is None:
-            return self.async_abort(reason="server_not_configured")
+        server_config = self._get_entry()
         _errors = {}
         if user_input is not None:
             valid = await _client_call_wrapper(
