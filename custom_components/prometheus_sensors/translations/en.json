@@ -56,6 +56,15 @@
     "entity": {
       "step": {
         "add_query": {
+          "description": "Choose the entity type for this Prometheus query.",
+          "data": {
+            "platform": "Entity type"
+          },
+          "data_description": {
+            "platform": "Choose whether this query creates a sensor or binary sensor."
+          }
+        },
+        "add_sensor_query": {
           "description": "Add a new Prometheus query as sensor. Check the [documentation](https://developers.home-assistant.io/docs/core/entity/sensor/) for more information.",
           "data": {
             "name": "Name",
@@ -71,6 +80,22 @@
             "state_class": "The state class of the sensor.",
             "device_class": "The device class of the sensor.",
             "unit_of_measurement": "The unit of measurement for the sensor."
+          }
+        },
+        "add_binary_query": {
+          "description": "Add a new Prometheus query as binary sensor. Check the [documentation](https://developers.home-assistant.io/docs/core/entity/binary_sensor/) for more information.",
+          "data": {
+            "name": "Name",
+            "query": "Query",
+            "icon": "Icon",
+            "device_class": "Device Class",
+            "value_template": "Value Template"
+          },
+          "data_description": {
+            "name": "The name of the binary sensor.",
+            "query": "The PromQL query to execute.",
+            "device_class": "The device class of the binary sensor.",
+            "value_template": "Optional template rendered with value set to the query result."
           }
         },
         "reconfigure_sensor": {
@@ -89,6 +114,22 @@
             "state_class": "The state class of the sensor.",
             "device_class": "The device class of the sensor.",
             "unit_of_measurement": "The unit of measurement for the sensor."
+          }
+        },
+        "reconfigure_binary_sensor": {
+          "description": "Reconfigure a Prometheus binary sensor query",
+          "data": {
+            "name": "Name",
+            "query": "Query",
+            "icon": "Icon",
+            "device_class": "Device Class",
+            "value_template": "Value Template"
+          },
+          "data_description": {
+            "name": "The name of the binary sensor.",
+            "query": "The PromQL query to execute.",
+            "device_class": "The device class of the binary sensor.",
+            "value_template": "Optional template rendered with value set to the query result."
           }
         }
       },

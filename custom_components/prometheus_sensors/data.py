@@ -5,17 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
+    CONF_DEVICE_CLASS,
     CONF_ICON,
     CONF_ID,
     CONF_NAME,
-    CONF_DEVICE_CLASS,
     CONF_UNIT_OF_MEASUREMENT,
 )
 
-from .const import CONF_QUERY, CONF_STATE_CLASS
-
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from .const import CONF_QUERY, CONF_STATE_CLASS, query_id_from_name
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -54,19 +53,23 @@ class QueryDefinition:
         """Initialize a QueryDefinition object."""
         setattr(self, CONF_NAME, name)
         setattr(self, CONF_QUERY, query)
-        setattr(self, CONF_ID, name.lower().replace(" ", "_"))
+        setattr(self, CONF_ID, query_id_from_name(name))
         setattr(self, CONF_ICON, icon or "mdi:chart-line")
         setattr(
             self,
             CONF_DEVICE_CLASS,
-            None if device_class == "" else SensorDeviceClass(device_class),
+            None if device_class in (None, "") else SensorDeviceClass(device_class),
         )
         setattr(
             self,
             CONF_UNIT_OF_MEASUREMENT,
             None if unit_of_measurement == "" else unit_of_measurement,
         )
-        setattr(self, CONF_STATE_CLASS, SensorStateClass(state_class))
+        setattr(
+            self,
+            CONF_STATE_CLASS,
+            None if state_class in (None, "") else SensorStateClass(state_class),
+        )
 
 
 @dataclass

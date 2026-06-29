@@ -4,26 +4,26 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from homeassistant.const import CONF_ID
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from custom_components.prometheus_sensors.const import CONF_QUERY
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from .api import (
+    PrometheusApiClient,
     PrometheusApiClientAuthenticationError,
     PrometheusApiClientError,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Coroutine
+    from collections.abc import Mapping
     from datetime import timedelta
     from logging import Logger
 
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.debounce import Debouncer
     from homeassistant.helpers.typing import StateType
 
     from .data import PrometheusSensorsConfigEntry
@@ -35,45 +35,41 @@ type PrometheusResult = dict[str, StateType | date | datetime | Decimal | None]
 class PrometheusDataUpdateCoordinator(DataUpdateCoordinator[PrometheusResult]):
     """Class to manage fetching data from the API."""
 
-    config_entry: PrometheusSensorsConfigEntry
-
-    def __init__(  # noqa: D107, PLR0913
+    def __init__(
         self,
         hass: HomeAssistant,
         logger: Logger,
         *,
-        config_entry: PrometheusSensorsConfigEntry,
+        client: PrometheusApiClient,
+        queries: Mapping[str, str],
+        config_entry: PrometheusSensorsConfigEntry | None = None,
         name: str,
         update_interval: timedelta | None = None,
-        update_method: Callable[[], Awaitable[PrometheusResult]] | None = None,
-        setup_method: Callable[[], Awaitable[None]] | None = None,
-        request_refresh_debouncer: Debouncer[Coroutine[Any, Any, None]] | None = None,
-        always_update: bool = True,
     ) -> None:
+        self.client = client
+        self.queries = queries
+        coordinator_kwargs = {}
+        if config_entry is not None:
+            coordinator_kwargs["config_entry"] = config_entry
+
         super().__init__(
             hass,
             logger,
-            config_entry=config_entry,
             name=name,
             update_interval=update_interval,
-            update_method=update_method,
-            setup_method=setup_method,
-            request_refresh_debouncer=request_refresh_debouncer,
-            always_update=always_update,
+            **coordinator_kwargs,
         )
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self) -> PrometheusResult:
         """Update data via library."""
         try:
             return {
-                subentry_config.data[
-                    CONF_ID
-                ]: await self.config_entry.runtime_data.client.async_query(
-                    subentry_config.data[CONF_QUERY]
-                )
-                for _, subentry_config in self.config_entry.subentries.items()
+                query_id: await self.client.async_query(query)
+                for query_id, query in self.queries.items()
             }
         except PrometheusApiClientAuthenticationError as exception:
-            raise ConfigEntryAuthFailed(exception) from exception
+            if getattr(self, "config_entry", None) is not None:
+                raise ConfigEntryAuthFailed(exception) from exception
+            raise UpdateFailed(exception) from exception
         except PrometheusApiClientError as exception:
             raise UpdateFailed(exception) from exception

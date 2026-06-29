@@ -17,6 +17,7 @@ class PrometheusClient:
         url: str,
         session: aiohttp.ClientSession,
         timeout: aiohttp.ClientTimeout | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         """Initialize the Prometheus API client."""
         if url is None:
@@ -25,12 +26,14 @@ class PrometheusClient:
         self._url = url
         self._session = session
         self._timeout = timeout or aiohttp.ClientTimeout(total=10)
+        self._headers = headers
 
     async def check_connection(self, params: dict | None = None) -> bool:
         """Validate the connection to the server."""
         response = await self._session.get(
             f"{self._url}/",
             params=params,
+            headers=self._headers,
             timeout=self._timeout,
         )
         return response.ok
@@ -48,6 +51,7 @@ class PrometheusClient:
         response = await self._session.get(
             f"{self._url}/api/v1/labels",
             params=params,
+            headers=self._headers,
             timeout=self._timeout,
         )
 
@@ -65,6 +69,7 @@ class PrometheusClient:
         response = await self._session.get(
             f"{self._url}/api/v1/label/{label_name}/values",
             params=params,
+            headers=self._headers,
             timeout=self._timeout,
         )
 
@@ -87,6 +92,7 @@ class PrometheusClient:
         response = await self._session.get(
             f"{self._url}/api/v1/query",
             params={"query": query, **params},
+            headers=self._headers,
             timeout=self._timeout,
         )
         if response.status == HTTPStatus.OK:
@@ -120,6 +126,7 @@ class PrometheusClient:
                 "step": step,
                 **params,
             },
+            headers=self._headers,
             timeout=self._timeout,
         )
         if response.status == HTTPStatus.OK:

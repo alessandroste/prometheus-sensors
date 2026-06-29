@@ -39,10 +39,13 @@ class PrometheusApiClient:
         self,
         host: str,
         session: aiohttp.ClientSession,
+        headers: dict[str, str] | None = None,
     ) -> None:
         """Sample API Client."""
         self._host = host
-        self._connection = PrometheusClient(url=self._host, session=session)
+        self._connection = PrometheusClient(
+            url=self._host, session=session, headers=headers
+        )
 
     async def async_get_metrics(self) -> list[str]:
         """Get all the defined metrics from Prometheus."""

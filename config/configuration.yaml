@@ -20,6 +20,22 @@ sun:
 # webhook:
 # zeroconf:
 
+prometheus_sensors:
+  - name: Test Prometheus Server
+    host: http://prometheus:9090
+    verify_ssl: true
+    scan_interval: 15
+    sensors:
+      - name: Test CPU Usage
+        query: sum(rate(node_cpu_seconds_total{mode!="idle"}[1m])) / sum(rate(node_cpu_seconds_total[1m])) * 100
+        unit_of_measurement: "%"
+        icon: mdi:cpu-64-bit
+    binary_sensors:
+      - name: Test Prometheus Up
+        query: up
+        value_template: "{{ value == 1 }}"
+        device_class: connectivity
+
 # https://www.home-assistant.io/integrations/homeassistant/
 homeassistant:
   debug: true
@@ -29,3 +45,4 @@ logger:
   default: info
   logs:
     custom_components.prometheus_sensors: debug
+

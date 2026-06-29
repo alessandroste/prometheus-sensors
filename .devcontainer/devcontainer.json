@@ -2,7 +2,6 @@
   "name": "HomeAssistant Integration",
   "dockerComposeFile": "docker-compose.yaml",
   "service": "homeassistant",
-  "postCreateCommand": "/workspace/scripts/setup",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   "forwardPorts": [
@@ -41,14 +40,16 @@
       }
     }
   },
-  "remoteUser": "vscode",
+  "remoteUser": "root",
   "features": {
     "ghcr.io/devcontainers-extra/features/apt-packages:1": {
       "packages": [
         "ffmpeg",
+        "git",
         "libturbojpeg0",
         "libpcap-dev"
       ]
     }
-  }
+  },
+  "postCreateCommand": "python -m pip install --upgrade pip setuptools wheel && python -m pip install -r .devcontainer/requirements.txt"
 }

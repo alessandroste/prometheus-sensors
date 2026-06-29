@@ -1,11 +1,13 @@
 services:
   homeassistant:
-    image: mcr.microsoft.com/devcontainers/python:3
+    image: docker.io/python:slim
     container_name: homeassistant
     ports:
       - 8123:8123
     volumes:
       - ..:/workspace:cached
+      - ha_data:/workspace/config
+      - ../config/configuration.yaml:/workspace/config/configuration.yaml
     restart: unless-stopped
     command: sleep infinity
   prometheus:
@@ -34,3 +36,4 @@ services:
 
 volumes:
   prom_data:
+  ha_data:

@@ -16,7 +16,8 @@
       "args": [
         "--config",
         "${workspaceFolder}/config",
-        "--debug"
+        "--debug",
+        "--skip-pip"
       ],
       "console": "integratedTerminal"
     }

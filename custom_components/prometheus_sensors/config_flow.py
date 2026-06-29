@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import (
     ConfigSubentryFlow,
@@ -15,10 +16,14 @@ from homeassistant.const import (
     CONF_DEVICE_CLASS,
     CONF_HOST,
     CONF_ICON,
+    CONF_ID,
     CONF_NAME,
+    CONF_PLATFORM,
     CONF_SCAN_INTERVAL,
     CONF_UNIT_OF_MEASUREMENT,
+    CONF_VALUE_TEMPLATE,
     CONF_VERIFY_SSL,
+    Platform,
 )
 from homeassistant.core import callback
 from homeassistant.helpers import selector
@@ -37,11 +42,13 @@ from .const import (
     CONF_STATE_CLASS,
     DOMAIN,
     LOGGER,
+    SCAN_INTERVAL,
     SCHEMA_HINT_HOST,
     SCHEMA_HINT_ICON,
     SCHEMA_HINT_NAME,
     SCHEMA_HINT_QUERY,
     SCHEMA_HINT_QUERY_NAME,
+    query_id_from_name,
 )
 
 if TYPE_CHECKING:
@@ -62,7 +69,10 @@ SCHEMA_CONNECTION = vol.Schema(
             selector.TextSelectorConfig(type=selector.TextSelectorType.URL)
         ),
         vol.Required(CONF_VERIFY_SSL, default=True): selector.BooleanSelector(),
-        vol.Optional(CONF_SCAN_INTERVAL): selector.DurationSelector(
+        vol.Optional(
+            CONF_SCAN_INTERVAL,
+            default={"seconds": int(SCAN_INTERVAL.total_seconds())},
+        ): selector.DurationSelector(
             selector.DurationSelectorConfig(
                 enable_day=False, enable_millisecond=False, allow_negative=False
             )
@@ -70,7 +80,23 @@ SCHEMA_CONNECTION = vol.Schema(
     },
 )
 
-SCHEMA_QUERY = vol.Schema(
+SCHEMA_QUERY_TYPE = vol.Schema(
+    {
+        vol.Required(CONF_PLATFORM, default=Platform.SENSOR): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    selector.SelectOptionDict(value=Platform.SENSOR, label="Sensor"),
+                    selector.SelectOptionDict(
+                        value=Platform.BINARY_SENSOR, label="Binary sensor"
+                    ),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        ),
+    }
+)
+
+SCHEMA_SENSOR_QUERY = vol.Schema(
     {
         vol.Required(
             CONF_NAME, default=SCHEMA_HINT_QUERY_NAME
@@ -109,6 +135,35 @@ SCHEMA_QUERY = vol.Schema(
         vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=""): selector.TextSelector(
             selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
         ),
+    }
+)
+
+SCHEMA_BINARY_QUERY = vol.Schema(
+    {
+        vol.Required(
+            CONF_NAME, default=SCHEMA_HINT_QUERY_NAME
+        ): selector.TextSelector(),
+        vol.Required(CONF_QUERY, default=SCHEMA_HINT_QUERY): selector.TextSelector(
+            selector.TextSelectorConfig(
+                type=selector.TextSelectorType.TEXT, multiline=True
+            )
+        ),
+        vol.Required(CONF_ICON, default=SCHEMA_HINT_ICON): selector.IconSelector(),
+        vol.Optional(CONF_DEVICE_CLASS, default=""): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    *[
+                        selector.SelectOptionDict(
+                            value=device_class, label=device_class
+                        )
+                        for device_class in BinarySensorDeviceClass
+                    ],
+                    selector.SelectOptionDict(value="", label=""),
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        ),
+        vol.Optional(CONF_VALUE_TEMPLATE): selector.TemplateSelector(),
     }
 )
 
@@ -220,6 +275,19 @@ class SubentryFlowHandler(ConfigSubentryFlow):
     async def async_step_add_query(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
+        """Choose the entity type for a new Prometheus query."""
+        if user_input is not None:
+            if user_input[CONF_PLATFORM] == Platform.BINARY_SENSOR:
+                return await self.async_step_add_binary_query()
+            return await self.async_step_add_sensor_query()
+
+        return self.async_show_form(
+            step_id="add_query", data_schema=SCHEMA_QUERY_TYPE, errors={}
+        )
+
+    async def async_step_add_sensor_query(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Add a new sensor."""
         server_config = self._get_entry()
         _errors = {}
@@ -243,8 +311,10 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                     unit_of_measurement=user_input.get(CONF_UNIT_OF_MEASUREMENT),
                     state_class=user_input[CONF_STATE_CLASS],
                 )
+                query_data = asdict(query)
+                query_data[CONF_PLATFORM] = Platform.SENSOR
                 return self.async_create_entry(
-                    data=asdict(query), title=user_input[CONF_NAME]
+                    data=query_data, title=user_input[CONF_NAME]
                 )
             if valid:
                 _errors["base"] = "invalid_query"
@@ -252,7 +322,48 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                 _errors["base"] = valid.error_code
 
         return self.async_show_form(
-            step_id="add_query", data_schema=SCHEMA_QUERY, errors=_errors
+            step_id="add_sensor_query", data_schema=SCHEMA_SENSOR_QUERY, errors=_errors
+        )
+
+    async def async_step_add_binary_query(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Add a new binary sensor."""
+        server_config = self._get_entry()
+        _errors = {}
+        if user_input is not None:
+            valid = await _client_call_wrapper(
+                lambda: self._async_test_query(
+                    host=server_config.data[CONF_HOST],
+                    query=user_input[CONF_QUERY],
+                    session=async_create_clientsession(
+                        self.hass, verify_ssl=server_config.data[CONF_VERIFY_SSL]
+                    ),
+                )
+            )
+
+            if valid and valid.result:
+                query_data = {
+                    CONF_PLATFORM: Platform.BINARY_SENSOR,
+                    CONF_ID: query_id_from_name(user_input[CONF_NAME]),
+                    CONF_NAME: user_input[CONF_NAME],
+                    CONF_QUERY: user_input[CONF_QUERY],
+                    CONF_ICON: user_input.get(CONF_ICON),
+                    CONF_DEVICE_CLASS: user_input.get(CONF_DEVICE_CLASS),
+                    CONF_VALUE_TEMPLATE: user_input.get(CONF_VALUE_TEMPLATE),
+                }
+                return self.async_create_entry(
+                    data=query_data, title=user_input[CONF_NAME]
+                )
+            if valid:
+                _errors["base"] = "invalid_query"
+            else:
+                _errors["base"] = valid.error_code
+
+        return self.async_show_form(
+            step_id="add_binary_query",
+            data_schema=SCHEMA_BINARY_QUERY,
+            errors=_errors,
         )
 
     async def async_step_reconfigure(
@@ -265,8 +376,14 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Reconfigure a sensor."""
-        _errors = {}
         reconfigure_data = self._get_reconfigure_subentry()
+        if (
+            reconfigure_data.data.get(CONF_PLATFORM, Platform.SENSOR)
+            == Platform.BINARY_SENSOR
+        ):
+            return await self.async_step_reconfigure_binary_sensor(user_input)
+
+        _errors = {}
         server_config = self._get_entry()
         if user_input is not None:
             valid = await _client_call_wrapper(
@@ -288,10 +405,12 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                     unit_of_measurement=user_input.get(CONF_UNIT_OF_MEASUREMENT),
                     state_class=user_input[CONF_STATE_CLASS],
                 )
+                query_data = asdict(query)
+                query_data[CONF_PLATFORM] = Platform.SENSOR
                 return self.async_update_and_abort(
                     self._get_entry(),
                     self._get_reconfigure_subentry(),
-                    data=asdict(query),
+                    data=query_data,
                     title=user_input[CONF_NAME],
                 )
             if valid:
@@ -302,7 +421,54 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         return self.async_show_form(
             step_id="reconfigure_sensor",
             data_schema=self.add_suggested_values_to_schema(
-                SCHEMA_QUERY, reconfigure_data.data
+                SCHEMA_SENSOR_QUERY, reconfigure_data.data
+            ),
+            errors=_errors,
+        )
+
+    async def async_step_reconfigure_binary_sensor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Reconfigure a binary sensor."""
+        _errors = {}
+        reconfigure_data = self._get_reconfigure_subentry()
+        server_config = self._get_entry()
+        if user_input is not None:
+            valid = await _client_call_wrapper(
+                lambda: self._async_test_query(
+                    host=server_config.data[CONF_HOST],
+                    query=user_input[CONF_QUERY],
+                    session=async_create_clientsession(
+                        self.hass, verify_ssl=server_config.data[CONF_VERIFY_SSL]
+                    ),
+                )
+            )
+
+            if valid and valid.result:
+                query_data = {
+                    CONF_PLATFORM: Platform.BINARY_SENSOR,
+                    CONF_ID: query_id_from_name(user_input[CONF_NAME]),
+                    CONF_NAME: user_input[CONF_NAME],
+                    CONF_QUERY: user_input[CONF_QUERY],
+                    CONF_ICON: user_input.get(CONF_ICON),
+                    CONF_DEVICE_CLASS: user_input.get(CONF_DEVICE_CLASS),
+                    CONF_VALUE_TEMPLATE: user_input.get(CONF_VALUE_TEMPLATE),
+                }
+                return self.async_update_and_abort(
+                    self._get_entry(),
+                    self._get_reconfigure_subentry(),
+                    data=query_data,
+                    title=user_input[CONF_NAME],
+                )
+            if valid:
+                _errors["base"] = "invalid_query"
+            else:
+                _errors["base"] = valid.error_code
+
+        return self.async_show_form(
+            step_id="reconfigure_binary_sensor",
+            data_schema=self.add_suggested_values_to_schema(
+                SCHEMA_BINARY_QUERY, reconfigure_data.data
             ),
             errors=_errors,
         )
@@ -339,7 +505,7 @@ T = TypeVar("T")
 
 
 @dataclass
-class _ResultOrError(Generic[T]):
+class _ResultOrError[T]:
     result: T | None = None
     error_code: str | None = None
 
