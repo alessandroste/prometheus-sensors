@@ -98,16 +98,7 @@ async def async_setup_entry(
             coordinator=entry.runtime_data.coordinator,
             entity_description=_entity_description_from_query(query),
             attribution=query[CONF_QUERY],
-            device_info=DeviceInfo(
-                name=entry.data[CONF_NAME],
-                identifiers={
-                    (
-                        entry.domain,
-                        entry.entry_id,
-                    ),
-                },
-                entry_type=DeviceEntryType.SERVICE,
-            ),
+            device_info=None,
             value_template=query.get(CONF_VALUE_TEMPLATE),
         )
         async_add_entities(
@@ -125,7 +116,7 @@ class PrometheusBinarySensor(
         coordinator: PrometheusDataUpdateCoordinator,
         entity_description: BinarySensorEntityDescription,
         attribution: str,
-        device_info: DeviceInfo,
+        device_info: DeviceInfo | None,
         value_template: Template | None,
     ) -> None:
         """Initialize the binary sensor class."""

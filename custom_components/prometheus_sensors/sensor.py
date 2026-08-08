@@ -98,16 +98,7 @@ async def async_setup_entry(
             coordinator=entry.runtime_data.coordinator,
             entity_description=_entity_description_from_query(subentry.data),
             attribution=subentry.data[CONF_QUERY],
-            device_info=DeviceInfo(
-                name=entry.data[CONF_NAME],
-                identifiers={
-                    (
-                        entry.domain,
-                        entry.entry_id,
-                    ),
-                },
-                entry_type=DeviceEntryType.SERVICE,
-            ),
+            device_info=None,
         )
         async_add_entities(
             [sensor], update_before_add=True, config_subentry_id=subentry_id
@@ -124,7 +115,7 @@ class PrometheusSensor(
         coordinator: PrometheusDataUpdateCoordinator,
         entity_description: SensorEntityDescription,
         attribution: str,
-        device_info: DeviceInfo,
+        device_info: DeviceInfo | None,
     ) -> None:
         """Initialize the sensor class."""
         super().__init__(coordinator)
