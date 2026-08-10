@@ -26,7 +26,9 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import discovery
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
 
@@ -177,6 +179,8 @@ async def async_setup_entry(
     entry: PrometheusSensorsConfigEntry,
 ) -> bool:
     """Set up this integration using UI."""
+    _async_reconcile_registry(hass, entry)
+
     client = PrometheusApiClient(
         host=entry.data[CONF_HOST],
         session=async_get_clientsession(hass, verify_ssl=entry.data[CONF_VERIFY_SSL]),
@@ -218,15 +222,58 @@ async def async_unload_entry(
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def async_reload_entry(
-    hass: HomeAssistant,
-    entry: PrometheusSensorsConfigEntry,
+def _async_reconcile_registry(
+    hass: HomeAssistant, entry: PrometheusSensorsConfigEntry
 ) -> None:
-    """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    """Keep query entities and the endpoint device owned by the parent entry."""
+    active_query_ids = {
+        subentry.data[CONF_ID] for subentry in entry.subentries.values()
+    }
+    entity_registry = er.async_get(hass)
+
+    for entity_entry in list(entity_registry.entities.values()):
+        if (
+            entity_entry.config_entry_id != entry.entry_id
+            or entity_entry.platform != DOMAIN
+        ):
+            continue
+        if entity_entry.unique_id not in active_query_ids:
+            entity_registry.async_remove(entity_entry.entity_id)
+        elif entity_entry.config_subentry_id is not None:
+            entity_registry.async_update_entity(
+                entity_entry.entity_id, config_subentry_id=None
+            )
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    if device is not None:
+        _async_reconcile_device_registry_entry(device_registry, device, entry.entry_id)
+
+
+def _async_reconcile_device_registry_entry(
+    device_registry: dr.DeviceRegistry, device: dr.DeviceEntry, entry_id: str
+) -> None:
+    """Keep the endpoint device owned by the parent config entry."""
+    if hasattr(device, "config_subentry_id"):
+        if device.config_subentry_id is not None:
+            device_registry.async_update_device(device.id, new_config_subentry_id=None)
+        return
+
+    subentry_ids = getattr(device, "config_entries_subentries", {}).get(entry_id, set())
+    if not any(subentry_id is not None for subentry_id in subentry_ids):
+        return
+
+    device_registry.async_update_device(device.id, add_config_entry_id=entry_id)
+    for subentry_id in subentry_ids:
+        if subentry_id is not None:
+            device_registry.async_update_device(
+                device.id,
+                remove_config_entry_id=entry_id,
+                remove_config_subentry_id=subentry_id,
+            )
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle update."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    """Handle config entry or query subentry updates."""
+    _async_reconcile_registry(hass, entry)
+    hass.config_entries.async_schedule_reload(entry.entry_id)

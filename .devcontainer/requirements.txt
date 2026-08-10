@@ -1,12 +1,12 @@
 colorlog>=6.10.1
-homeassistant==2026.6.4
-home-assistant-frontend==20260527.7
+homeassistant==2026.8.0
+home-assistant-frontend==20260729.5
 ruff>=0.15.4
 
 # Requirements pulled in by Home Assistant's built-in startup defaults.
 aiohasupervisor==0.4.3
-async-upnp-client==0.46.2
-av==16.0.1
+async-upnp-client==0.47.1
+av==17.0.1
 ha-ffmpeg==3.2.2
 hassil==3.7.0
 home-assistant-intents==2026.6.1

@@ -89,7 +89,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the binary sensor platform."""
-    for subentry_id, subentry in entry.subentries.items():
+    for subentry in entry.subentries.values():
         if subentry.data.get(CONF_PLATFORM, Platform.SENSOR) != Platform.BINARY_SENSOR:
             continue
 
@@ -98,12 +98,19 @@ async def async_setup_entry(
             coordinator=entry.runtime_data.coordinator,
             entity_description=_entity_description_from_query(query),
             attribution=query[CONF_QUERY],
-            device_info=None,
+            device_info=DeviceInfo(
+                name=entry.data[CONF_NAME],
+                identifiers={
+                    (
+                        entry.domain,
+                        entry.entry_id,
+                    ),
+                },
+                entry_type=DeviceEntryType.SERVICE,
+            ),
             value_template=query.get(CONF_VALUE_TEMPLATE),
         )
-        async_add_entities(
-            [binary_sensor], update_before_add=True, config_subentry_id=subentry_id
-        )
+        async_add_entities([binary_sensor], update_before_add=True)
 
 
 class PrometheusBinarySensor(
@@ -116,7 +123,7 @@ class PrometheusBinarySensor(
         coordinator: PrometheusDataUpdateCoordinator,
         entity_description: BinarySensorEntityDescription,
         attribution: str,
-        device_info: DeviceInfo | None,
+        device_info: DeviceInfo,
         value_template: Template | None,
     ) -> None:
         """Initialize the binary sensor class."""
