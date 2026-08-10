@@ -11,7 +11,6 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     CONF_DEVICE_CLASS,
-    CONF_HOST,
     CONF_ICON,
     CONF_ID,
     CONF_NAME,
@@ -65,18 +64,13 @@ async def async_setup_platform(
     config = discovery_info
     queries = [_sensor_query_config(query) for query in config[CONF_QUERIES]]
     coordinator = config[DISCOVERY_COORDINATOR]
-    device_info = DeviceInfo(
-        name=config[CONF_NAME],
-        identifiers={(DOMAIN, config[CONF_HOST])},
-        entry_type=DeviceEntryType.SERVICE,
-    )
     async_add_entities(
         [
             PrometheusSensor(
                 coordinator=coordinator,
                 entity_description=_entity_description_from_query(query),
                 attribution=query[CONF_QUERY],
-                device_info=device_info,
+                device_info=None,
             )
             for query in queries
         ],
@@ -122,7 +116,7 @@ class PrometheusSensor(
         coordinator: PrometheusDataUpdateCoordinator,
         entity_description: SensorEntityDescription,
         attribution: str,
-        device_info: DeviceInfo,
+        device_info: DeviceInfo | None,
     ) -> None:
         """Initialize the sensor class."""
         super().__init__(coordinator)

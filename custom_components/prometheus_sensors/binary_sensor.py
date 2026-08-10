@@ -11,7 +11,6 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.const import (
     CONF_DEVICE_CLASS,
-    CONF_HOST,
     CONF_ICON,
     CONF_ID,
     CONF_NAME,
@@ -63,18 +62,13 @@ async def async_setup_platform(
     config = discovery_info
     queries = [_binary_query_config(query, hass) for query in config[CONF_QUERIES]]
     coordinator = config[DISCOVERY_COORDINATOR]
-    device_info = DeviceInfo(
-        name=config[CONF_NAME],
-        identifiers={(DOMAIN, config[CONF_HOST])},
-        entry_type=DeviceEntryType.SERVICE,
-    )
     async_add_entities(
         [
             PrometheusBinarySensor(
                 coordinator=coordinator,
                 entity_description=_entity_description_from_query(query),
                 attribution=query[CONF_QUERY],
-                device_info=device_info,
+                device_info=None,
                 value_template=query.get(CONF_VALUE_TEMPLATE),
             )
             for query in queries
@@ -123,7 +117,7 @@ class PrometheusBinarySensor(
         coordinator: PrometheusDataUpdateCoordinator,
         entity_description: BinarySensorEntityDescription,
         attribution: str,
-        device_info: DeviceInfo,
+        device_info: DeviceInfo | None,
         value_template: Template | None,
     ) -> None:
         """Initialize the binary sensor class."""
