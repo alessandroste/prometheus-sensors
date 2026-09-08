@@ -245,9 +245,11 @@ def _async_reconcile_registry(
             )
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
-    if device is not None:
-        _async_reconcile_device_registry_entry(device_registry, device, entry.entry_id)
+    for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
+        if (DOMAIN, entry.entry_id) in device.identifiers:
+            _async_reconcile_device_registry_entry(
+                device_registry, device, entry.entry_id
+            )
 
 
 def _async_reconcile_device_registry_entry(
